@@ -1,0 +1,2849 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CMF Analyzer — Sessões Legislativas</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0e0f13;
+  --surface: #16181f;
+  --surface2: #1e2028;
+  --surface3: #252836;
+  --border: #2a2d38;
+  --text: #e8eaf0;
+  --muted: #7a7e90;
+  --accent: #c8a96e;
+  --accent2: #7eb8d4;
+  --fav: #4caf82;
+  --neu: #7eb8d4;
+  --ruim: #d4625a;
+  --fav-bg: rgba(76,175,130,0.12);
+  --neu-bg: rgba(126,184,212,0.12);
+  --ruim-bg: rgba(212,98,90,0.12);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ─────────────────────────── UPLOAD SCREEN ─── */
+#upload-screen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+#upload-screen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 70% 60% at 50% 40%, rgba(200,169,110,0.06) 0%, transparent 70%),
+              radial-gradient(ellipse 50% 40% at 80% 80%, rgba(126,184,212,0.04) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.upload-logo {
+  font-family: 'Playfair Display', serif;
+  font-size: 0.75rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 48px;
+  font-weight: 400;
+}
+
+.upload-logo span { color: var(--accent); }
+
+.upload-title {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  font-weight: 900;
+  text-align: center;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  margin-bottom: 16px;
+}
+
+.upload-title em {
+  font-style: italic;
+  color: var(--accent);
+}
+
+.upload-subtitle {
+  font-size: 0.9rem;
+  color: var(--muted);
+  text-align: center;
+  max-width: 420px;
+  line-height: 1.7;
+  margin-bottom: 52px;
+}
+
+.drop-zone {
+  width: 100%;
+  max-width: 480px;
+  border: 2px dashed var(--border);
+  border-radius: 20px;
+  padding: 48px 32px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  position: relative;
+  background: var(--surface);
+}
+
+.drop-zone:hover, .drop-zone.drag-over {
+  border-color: var(--accent);
+  background: rgba(200,169,110,0.05);
+  transform: translateY(-2px);
+  box-shadow: 0 20px 60px rgba(200,169,110,0.1);
+}
+
+.drop-icon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+  display: block;
+  transition: transform 0.2s;
+}
+
+.drop-zone:hover .drop-icon { transform: translateY(-4px); }
+
+.drop-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+
+.drop-sub {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-bottom: 20px;
+}
+
+.drop-btn {
+  display: inline-block;
+  background: var(--accent);
+  color: #0e0f13;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 600;
+  font-size: 0.82rem;
+  padding: 10px 24px;
+  border-radius: 30px;
+  border: none;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  transition: all 0.15s;
+}
+
+.drop-btn:hover { background: #d9bc80; transform: translateY(-1px); }
+
+#file-input { display: none; }
+
+.format-hint {
+  margin-top: 14px;
+  font-size: 0.68rem;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+}
+
+.format-hint span {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 6px;
+  margin: 0 2px;
+}
+
+.upload-features {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  max-width: 480px;
+  width: 100%;
+  margin-top: 40px;
+}
+
+.feat-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+}
+
+.feat-icon { font-size: 1.4rem; margin-bottom: 8px; display: block; }
+.feat-name { font-size: 0.7rem; color: var(--muted); line-height: 1.4; }
+.feat-name strong { display: block; color: var(--text); font-size: 0.75rem; margin-bottom: 2px; }
+
+/* ─────────────────────────── LOADING ─── */
+#loading-screen {
+  display: none;
+  min-height: 100vh;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.loader-ring {
+  width: 56px; height: 56px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.loader-text {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* ─────────────────────────── DASHBOARD ─── */
+#dashboard-screen { display: none; }
+
+header {
+  border-bottom: 1px solid var(--border);
+  padding: 20px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.header-brand {
+  display: flex;
+  flex-direction: column;
+}
+
+.header-brand h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.header-brand .subtitle {
+  font-size: 0.68rem;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  margin-top: 4px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.header-kpis {
+  display: flex;
+  gap: 20px;
+}
+
+.hkpi { text-align: center; }
+.hkpi .num {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.3rem;
+  font-weight: 900;
+  color: var(--accent);
+  line-height: 1;
+}
+.hkpi .lbl {
+  font-size: 0.6rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-family: 'DM Mono', monospace;
+}
+
+.new-file-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.new-file-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* SEARCH BAR */
+.search-bar-wrap {
+  padding: 14px 32px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.global-search {
+  flex: 1;
+  min-width: 200px;
+  position: relative;
+}
+
+.global-search input {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 9px 12px 9px 36px;
+  font-size: 0.82rem;
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  outline: none;
+  transition: border 0.15s;
+}
+
+.global-search input:focus { border-color: var(--accent2); }
+.global-search::before {
+  content: '⌕';
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-size: 1.1rem;
+  pointer-events: none;
+}
+
+.active-filters {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.filter-tag {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(200,169,110,0.12);
+  border: 1px solid rgba(200,169,110,0.3);
+  color: var(--accent);
+  font-size: 0.68rem;
+  font-family: 'DM Mono', monospace;
+  padding: 4px 8px;
+  border-radius: 20px;
+  animation: fadeInTag 0.2s ease;
+}
+
+@keyframes fadeInTag { from { opacity:0; transform:scale(0.8); } to { opacity:1; transform:scale(1); } }
+
+.filter-tag button {
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 0;
+  font-size: 0.75rem;
+  line-height: 1;
+  opacity: 0.6;
+}
+
+.filter-tag button:hover { opacity: 1; }
+
+.clear-all-btn {
+  font-size: 0.68rem;
+  color: var(--muted);
+  text-decoration: underline;
+  cursor: pointer;
+  white-space: nowrap;
+  background: none;
+  border: none;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.clear-all-btn:hover { color: var(--ruim); }
+
+/* MAIN LAYOUT */
+.main {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+}
+
+/* SIDEBAR */
+aside {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 0;
+  position: sticky;
+  top: 117px;
+  height: calc(100vh - 117px);
+  overflow-y: auto;
+}
+
+.filter-section {
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.filter-label {
+  font-size: 0.6rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-family: 'DM Mono', monospace;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.filter-label .count-badge {
+  background: var(--accent);
+  color: #0e0f13;
+  border-radius: 10px;
+  padding: 1px 6px;
+  font-size: 0.6rem;
+  font-weight: 600;
+}
+
+.pill-group { display: flex; flex-wrap: wrap; gap: 5px; }
+
+.pill {
+  padding: 4px 11px;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  transition: all 0.12s;
+  font-family: 'DM Sans', sans-serif;
+  white-space: nowrap;
+}
+
+.pill:hover { border-color: var(--accent); color: var(--accent); }
+.pill.active { background: var(--accent); color: #0e0f13; border-color: var(--accent); font-weight: 600; }
+.pill.fav.active { background: var(--fav); border-color: var(--fav); color: #0e0f13; }
+.pill.neu.active { background: var(--neu); border-color: var(--neu); color: #0e0f13; }
+.pill.ruim.active { background: var(--ruim); border-color: var(--ruim); color: #fff; }
+
+/* Period slider */
+.period-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+
+.period-btn {
+  padding: 6px 4px;
+  border-radius: 6px;
+  font-size: 0.66rem;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  transition: all 0.12s;
+  text-align: center;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.period-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+.period-btn.active { background: rgba(126,184,212,0.15); border-color: var(--accent2); color: var(--accent2); font-weight: 600; }
+
+/* Vereador list */
+.ver-search-wrap { position: relative; margin-bottom: 8px; }
+.ver-search-wrap input {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 10px 7px 28px;
+  font-size: 0.75rem;
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  outline: none;
+}
+.ver-search-wrap input:focus { border-color: var(--accent2); }
+.ver-search-wrap::before {
+  content: '⌕';
+  position: absolute;
+  left: 8px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted); font-size: 0.9rem;
+  pointer-events: none;
+}
+
+.ver-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.ver-action-btn {
+  font-size: 0.62rem;
+  color: var(--accent2);
+  cursor: pointer;
+  text-decoration: underline;
+  background: none; border: none;
+  font-family: 'DM Sans', sans-serif;
+  padding: 0;
+}
+
+.ver-list { max-height: 200px; overflow-y: auto; }
+
+.ver-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.74rem;
+  color: var(--muted);
+  transition: all 0.1s;
+  user-select: none;
+}
+
+.ver-item:hover { background: var(--surface2); color: var(--text); }
+.ver-item.selected { background: rgba(200,169,110,0.08); color: var(--accent); }
+
+.ver-check {
+  width: 14px; height: 14px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.55rem;
+  transition: all 0.1s;
+}
+
+.ver-item.selected .ver-check {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #0e0f13;
+}
+
+.ver-count {
+  margin-left: auto;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.6rem;
+  color: var(--muted);
+}
+
+/* Sparkline mini */
+.ver-spark {
+  display: flex; gap: 1px; align-items: flex-end;
+  height: 12px; margin-left: 4px;
+}
+.ver-spark-bar { width: 4px; border-radius: 1px; }
+
+/* CONTENT */
+.content { padding: 24px 28px; }
+
+/* TAB NAV */
+.tab-nav {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 22px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0;
+}
+
+.tab-btn {
+  padding: 8px 18px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  transition: all 0.15s;
+  margin-bottom: -1px;
+}
+
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
+
+/* KPI ROW */
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.kpi {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 18px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.15s, transform 0.15s;
+  cursor: default;
+}
+
+.kpi:hover { border-color: var(--accent); transform: translateY(-1px); }
+.kpi::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0;
+  height: 2px; border-radius: 12px 12px 0 0;
+}
+.kpi.total::before { background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+.kpi.fav::before { background: var(--fav); }
+.kpi.neu::before { background: var(--neu); }
+.kpi.ruim::before { background: var(--ruim); }
+
+.kpi-num {
+  font-family: 'Playfair Display', serif;
+  font-size: 2rem;
+  font-weight: 900;
+  line-height: 1;
+}
+.kpi.fav .kpi-num { color: var(--fav); }
+.kpi.neu .kpi-num { color: var(--neu); }
+.kpi.ruim .kpi-num { color: var(--ruim); }
+.kpi.total .kpi-num { color: var(--accent); }
+
+.kpi-label {
+  font-size: 0.62rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-family: 'DM Mono', monospace;
+  margin-top: 5px;
+}
+
+.kpi-bar {
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  margin-top: 8px;
+  overflow: hidden;
+}
+
+.kpi-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+.kpi.fav .kpi-bar-fill { background: var(--fav); }
+.kpi.neu .kpi-bar-fill { background: var(--neu); }
+.kpi.ruim .kpi-bar-fill { background: var(--ruim); }
+.kpi.total .kpi-bar-fill { display: none; }
+
+.kpi-pct {
+  font-size: 0.68rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* CHART CARDS */
+.charts-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.chart-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px;
+}
+
+.chart-card h3 {
+  font-size: 0.62rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-family: 'DM Mono', monospace;
+  margin-bottom: 14px;
+}
+
+/* Bar chart */
+.bar-row {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 6px; min-height: 22px;
+}
+
+.bar-label {
+  font-size: 0.7rem;
+  color: var(--muted);
+  width: 110px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bar-track {
+  flex: 1; height: 18px;
+  background: var(--surface2);
+  border-radius: 4px;
+  overflow: hidden;
+  display: flex;
+}
+
+.bar-seg { height: 100%; transition: width 0.45s cubic-bezier(.4,0,.2,1); }
+
+.bar-total {
+  font-size: 0.6rem;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  width: 26px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* Donut */
+.donut-wrap { display: flex; align-items: center; gap: 20px; }
+.donut-legend { flex: 1; }
+.donut-item {
+  display: flex; align-items: center; gap: 7px;
+  margin-bottom: 8px; cursor: pointer;
+  transition: opacity 0.15s;
+}
+.donut-item:hover { opacity: 0.75; }
+.donut-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.donut-name { font-size: 0.73rem; color: var(--text); flex: 1; }
+.donut-val { font-family: 'DM Mono', monospace; font-size: 0.7rem; color: var(--muted); }
+
+/* Timeline canvas */
+.timeline-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px;
+  margin-bottom: 14px;
+}
+.timeline-card h3 {
+  font-size: 0.62rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-family: 'DM Mono', monospace;
+  margin-bottom: 12px;
+}
+
+#timeline-canvas { width: 100%; height: 130px; display: block; cursor: crosshair; }
+
+.timeline-legend {
+  display: flex; gap: 16px; justify-content: center; margin-top: 10px;
+}
+.tl-item {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 0.62rem; color: var(--muted); font-family: 'DM Mono', monospace;
+}
+.tl-line { width: 18px; height: 2px; border-radius: 2px; }
+
+/* RANKING TABLE */
+.ranking-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+
+.ranking-card h3 {
+  font-size: 0.62rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-family: 'DM Mono', monospace;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.rank-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 18px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+  cursor: pointer;
+}
+
+.rank-row:last-child { border-bottom: none; }
+.rank-row:hover { background: var(--surface2); }
+
+.rank-num {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--border);
+  width: 24px;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.rank-row:nth-child(1) .rank-num { color: var(--accent); }
+.rank-row:nth-child(2) .rank-num { color: var(--muted); }
+.rank-row:nth-child(3) .rank-num { color: #a07b5a; }
+
+.rank-name { font-size: 0.8rem; font-weight: 500; color: var(--text); flex: 1; }
+.rank-mini-bars { display: flex; gap: 3px; align-items: center; width: 100px; }
+.rank-mini-bar { height: 16px; border-radius: 2px; min-width: 2px; }
+.rank-total {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--muted);
+  width: 28px;
+  text-align: right;
+}
+
+/* TABLE VIEW */
+.table-toolbar {
+  display: flex; gap: 10px; align-items: center;
+  margin-bottom: 14px; flex-wrap: wrap;
+}
+
+.sort-select {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.75rem;
+  padding: 7px 12px;
+  border-radius: 8px;
+  outline: none;
+  cursor: pointer;
+}
+
+.sort-select:focus { border-color: var(--accent2); }
+
+.per-page-select {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.75rem;
+  padding: 7px 10px;
+  border-radius: 8px;
+  outline: none;
+  cursor: pointer;
+}
+
+.export-btn {
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  transition: all 0.15s;
+  display: flex; align-items: center; gap: 5px;
+}
+.export-btn:hover { border-color: var(--fav); color: var(--fav); }
+
+.table-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+table { width: 100%; border-collapse: collapse; font-size: 0.77rem; }
+
+thead th {
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  font-weight: 600;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+  font-family: 'DM Mono', monospace;
+  white-space: nowrap;
+}
+
+thead th:hover { color: var(--accent); }
+thead th.sort-asc::after { content: ' ↑'; }
+thead th.sort-desc::after { content: ' ↓'; }
+
+tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+  cursor: pointer;
+  animation: rowIn 0.2s ease both;
+}
+
+@keyframes rowIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+tbody tr:hover { background: var(--surface2); }
+tbody tr:last-child { border-bottom: none; }
+
+td { padding: 9px 14px; vertical-align: middle; }
+
+td.td-ver { color: var(--accent); font-weight: 500; max-width: 130px; }
+td.td-date { color: var(--muted); font-family: 'DM Mono', monospace; font-size: 0.68rem; white-space: nowrap; }
+td.td-tema { color: var(--muted); font-size: 0.7rem; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+td.td-disc { max-width: 320px; }
+
+.disc-clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 0.72rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.badge {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  font-family: 'DM Mono', monospace;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.badge.fav { background: var(--fav-bg); color: var(--fav); }
+.badge.neu { background: var(--neu-bg); color: var(--neu); }
+.badge.ruim { background: var(--ruim-bg); color: var(--ruim); }
+
+/* PAGINATION */
+.pagination {
+  display: flex; gap: 4px; align-items: center;
+  justify-content: flex-end; padding: 12px 16px;
+  border-top: 1px solid var(--border); flex-wrap: wrap;
+}
+
+.page-btn {
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  border-radius: 6px;
+  font-size: 0.72rem;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  transition: all 0.1s;
+  min-width: 32px;
+  text-align: center;
+}
+.page-btn:hover, .page-btn.active { background: var(--accent); color: #0e0f13; border-color: var(--accent); font-weight: 600; }
+.page-btn:disabled { opacity: 0.25; cursor: not-allowed; }
+.page-info { font-size: 0.68rem; color: var(--muted); font-family: 'DM Mono', monospace; padding: 0 4px; }
+
+/* MODAL */
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.8); z-index: 999;
+  align-items: center; justify-content: center; padding: 20px;
+}
+.modal-overlay.open { display: flex; }
+
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  max-width: 620px; width: 100%;
+  padding: 28px;
+  position: relative;
+  animation: modalIn 0.2s ease;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+@keyframes modalIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+.modal-close {
+  position: absolute; top: 14px; right: 14px;
+  background: none; border: 1px solid var(--border);
+  color: var(--muted); cursor: pointer;
+  width: 28px; height: 28px; border-radius: 50%;
+  font-size: 0.9rem;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.modal-close:hover { border-color: var(--ruim); color: var(--ruim); }
+
+.modal-header { margin-bottom: 16px; padding-right: 24px; }
+.modal-ver {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.2rem; font-weight: 700; color: var(--accent);
+  margin-bottom: 8px;
+}
+.modal-tags { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.modal-tag {
+  font-size: 0.65rem; font-family: 'DM Mono', monospace;
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--muted); padding: 3px 8px; border-radius: 4px;
+}
+
+.modal-disc {
+  font-size: 0.87rem; color: var(--text); line-height: 1.75;
+  border-left: 2px solid var(--accent);
+  padding-left: 16px; margin-top: 14px;
+}
+
+/* NO DATA */
+.no-data {
+  text-align: center; padding: 48px;
+  color: var(--muted); font-size: 0.88rem;
+}
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+/* ERROR TOAST */
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: var(--ruim); color: #fff;
+  padding: 12px 24px; border-radius: 10px;
+  font-size: 0.82rem; z-index: 9999;
+  animation: toastIn 0.3s ease, toastOut 0.3s ease 3.7s forwards;
+  pointer-events: none;
+}
+@keyframes toastIn { from { opacity:0; transform:translateX(-50%) translateY(10px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
+@keyframes toastOut { to { opacity:0; transform:translateX(-50%) translateY(10px); } }
+
+/* EMPTY STATE */
+.empty-icon { font-size: 3rem; margin-bottom: 12px; display: block; }
+
+/* LEGEND PILLS */
+.legend-row {
+  display: flex; gap: 12px; margin-top: 10px;
+  font-size: 0.62rem; color: var(--muted); font-family: 'DM Mono', monospace;
+}
+.legend-dot {
+  display: inline-block; width: 9px; height: 9px;
+  border-radius: 50%; margin-right: 4px; vertical-align: middle;
+}
+
+/* HIGHLIGHT SEARCH */
+mark {
+  background: rgba(200,169,110,0.25);
+  color: var(--accent);
+  border-radius: 2px;
+}
+
+/* Tooltip */
+.tooltip {
+  position: fixed;
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 0.7rem;
+  padding: 6px 10px;
+  border-radius: 6px;
+  pointer-events: none;
+  z-index: 500;
+  white-space: nowrap;
+  display: none;
+  font-family: 'DM Mono', monospace;
+}
+
+/* ── SECTION DIVIDER ── */
+.section-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.section-title::after {
+  content: ''; flex: 1; height: 1px;
+  background: var(--border);
+}
+
+/* ── REPORT BUTTON ── */
+.report-btn {
+  background: var(--accent);
+  border: none;
+  color: #0e0f13;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  transition: all 0.15s;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+}
+.report-btn:hover { background: #d9bc80; transform: translateY(-1px); }
+
+/* ── REPORT MODAL ── */
+#report-modal { z-index: 1000; }
+
+.report-modal-inner {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  width: 100%;
+  max-width: 720px;
+  max-height: 92vh;
+  overflow-y: auto;
+  animation: modalIn 0.2s ease;
+  position: relative;
+}
+
+.report-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 24px 28px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.report-modal-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.report-modal-sub {
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  margin-top: 4px;
+}
+
+.report-config {
+  padding: 20px 28px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.report-config-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.report-config-label {
+  font-size: 0.65rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-family: 'DM Mono', monospace;
+}
+
+.report-input {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 0.82rem;
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  outline: none;
+  transition: border 0.15s;
+}
+.report-input:focus { border-color: var(--accent); }
+.report-input::placeholder { color: var(--muted); }
+
+.report-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.rcheck {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--text);
+  cursor: pointer;
+  user-select: none;
+}
+
+.rcheck input[type=checkbox] {
+  accent-color: var(--accent);
+  width: 14px; height: 14px;
+  cursor: pointer;
+}
+
+.report-gen-btn {
+  align-self: flex-start;
+  background: var(--accent);
+  border: none;
+  color: #0e0f13;
+  padding: 10px 24px;
+  border-radius: 30px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  transition: all 0.15s;
+  letter-spacing: 0.02em;
+}
+.report-gen-btn:hover { background: #d9bc80; transform: translateY(-1px); }
+
+/* PREVIEW */
+.report-preview-wrap {
+  padding: 20px 28px 28px;
+}
+
+.report-preview-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.report-char-count {
+  font-size: 0.68rem;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+}
+
+.report-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.report-action-btn {
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  transition: all 0.15s;
+  border: 1px solid var(--border);
+  background: transparent;
+}
+
+.copy-btn { color: var(--accent2); border-color: rgba(126,184,212,0.4); }
+.copy-btn:hover { background: rgba(126,184,212,0.1); }
+
+.whats-btn { color: var(--fav); border-color: rgba(76,175,130,0.4); }
+.whats-btn:hover { background: rgba(76,175,130,0.1); }
+
+.dl-btn { color: var(--muted); }
+.dl-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* PHONE MOCKUP */
+.report-phone-wrap {
+  display: flex;
+  justify-content: center;
+}
+
+.report-phone {
+  width: 300px;
+  background: #1a1c22;
+  border-radius: 36px;
+  border: 2px solid var(--border);
+  padding: 16px 8px 24px;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.4);
+  position: relative;
+}
+
+.phone-notch {
+  width: 80px; height: 10px;
+  background: var(--border);
+  border-radius: 10px;
+  margin: 0 auto 14px;
+}
+
+.phone-screen {
+  background: #0d0f12;
+  border-radius: 20px;
+  padding: 12px 10px;
+  min-height: 320px;
+  max-height: 440px;
+  overflow-y: auto;
+}
+
+.phone-bubble {
+  background: #1f3a2b;
+  border-radius: 16px 16px 4px 16px;
+  padding: 12px 14px;
+  font-size: 0.72rem;
+  color: #e8f5e8;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: 'DM Sans', sans-serif;
+  max-width: 100%;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 860px) {
+  .main { grid-template-columns: 1fr; }
+  aside {
+    position: static; height: auto;
+    border-right: none; border-bottom: 1px solid var(--border);
+  }
+  .kpi-row { grid-template-columns: repeat(2, 1fr); }
+  .charts-2col { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════
+     UPLOAD SCREEN
+═══════════════════════════════════════════════════════ -->
+<div id="upload-screen">
+  <div class="upload-logo">Câmara de Vereadores · <span>Análise Legislativa</span></div>
+
+  <h1 class="upload-title">CMF<br><em>Analyzer</em></h1>
+  <p class="upload-subtitle">Faça o upload da planilha de falas das sessões ordinárias e obtenha análises instantâneas de posicionamento, temas e vereadores.</p>
+
+  <div class="drop-zone" id="drop-zone">
+    <span class="drop-icon">📊</span>
+    <div class="drop-title">Arraste o arquivo aqui</div>
+    <div class="drop-sub">ou clique para selecionar</div>
+    <button class="drop-btn" onclick="document.getElementById('file-input').click()">Selecionar arquivo</button>
+    <div class="format-hint">Aceita <span>.xlsx</span> <span>.xls</span></div>
+    <input type="file" id="file-input" accept=".xlsx,.xls" onchange="handleFile(this.files[0])">
+  </div>
+
+  <div class="upload-features">
+    <div class="feat-item">
+      <span class="feat-icon">🔍</span>
+      <div class="feat-name"><strong>Filtros avançados</strong>Vereador, tema, período e posicionamento</div>
+    </div>
+    <div class="feat-item">
+      <span class="feat-icon">📈</span>
+      <div class="feat-name"><strong>Visualizações</strong>Gráficos, timeline e ranking</div>
+    </div>
+    <div class="feat-item">
+      <span class="feat-icon">📋</span>
+      <div class="feat-name"><strong>Exportação</strong>Resultados filtrados em CSV</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     LOADING
+═══════════════════════════════════════════════════════ -->
+<div id="loading-screen" style="display:flex;display:none;min-height:100vh;align-items:center;justify-content:center;flex-direction:column;gap:16px;">
+  <div class="loader-ring"></div>
+  <div class="loader-text" id="loader-msg">Lendo arquivo…</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     DASHBOARD SCREEN
+═══════════════════════════════════════════════════════ -->
+<div id="dashboard-screen">
+
+  <!-- HEADER -->
+  <header>
+    <div class="header-brand">
+      <h1 id="header-title">Sessões Ordinárias — CMF</h1>
+      <div class="subtitle" id="header-sub">Análise de discursos legislativos</div>
+    </div>
+    <div class="header-right">
+      <div class="header-kpis">
+        <div class="hkpi"><div class="num" id="h-total">—</div><div class="lbl">Falas</div></div>
+        <div class="hkpi"><div class="num" id="h-sessoes">—</div><div class="lbl">Sessões</div></div>
+        <div class="hkpi"><div class="num" id="h-ver">—</div><div class="lbl">Vereadores</div></div>
+      </div>
+      <button class="report-btn" onclick="openReportModal()">📋 Gerar Relatório</button>
+      <button class="new-file-btn" onclick="resetToUpload()">↩ Novo arquivo</button>
+    </div>
+  </header>
+
+  <!-- SEARCH BAR -->
+  <div class="search-bar-wrap">
+    <div class="global-search">
+      <input type="text" id="global-search" placeholder="Buscar em todos os discursos…" oninput="onSearch()">
+    </div>
+    <div class="active-filters" id="active-filters"></div>
+    <button class="clear-all-btn" onclick="clearAllFilters()" id="clear-all-btn" style="display:none">Limpar filtros</button>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <!-- SIDEBAR -->
+    <aside>
+      <!-- Posicionamento -->
+      <div class="filter-section">
+        <div class="filter-label">Posicionamento</div>
+        <div class="pill-group">
+          <button class="pill active" data-pos="all" onclick="setFilter('pos','all',this)">Todos</button>
+          <button class="pill fav" data-pos="Favorável" onclick="setFilter('pos','Favorável',this)">✓ Favorável</button>
+          <button class="pill neu" data-pos="Neutro" onclick="setFilter('pos','Neutro',this)">~ Neutro</button>
+          <button class="pill ruim" data-pos="Ruim" onclick="setFilter('pos','Ruim',this)">✗ Ruim</button>
+        </div>
+      </div>
+
+      <!-- Período -->
+      <div class="filter-section">
+        <div class="filter-label">Período</div>
+        <div class="period-grid" id="period-grid">
+          <button class="period-btn active" data-period="all" onclick="setFilter('period','all',this)">Todos</button>
+        </div>
+      </div>
+
+      <!-- Tema -->
+      <div class="filter-section">
+        <div class="filter-label">
+          Tema / Secretaria
+          <span class="count-badge" id="tema-count">0</span>
+        </div>
+        <div class="pill-group" id="tema-pills">
+          <button class="pill active" data-tema="all" onclick="setFilter('tema','all',this)">Todos</button>
+        </div>
+      </div>
+
+      <!-- Vereadores -->
+      <div class="filter-section" style="border-bottom:none;">
+        <div class="filter-label">
+          Vereadores
+          <span class="count-badge" id="ver-selected-count">Todos</span>
+        </div>
+        <div class="ver-search-wrap">
+          <input type="text" id="ver-search-input" placeholder="Buscar…" oninput="filterVerList()">
+        </div>
+        <div class="ver-actions">
+          <button class="ver-action-btn" onclick="selectAllVer()">Todos</button>
+          <button class="ver-action-btn" onclick="deselectAllVer()">Nenhum</button>
+        </div>
+        <div class="ver-list" id="ver-list"></div>
+      </div>
+    </aside>
+
+    <!-- CONTENT -->
+    <div class="content">
+      <!-- TAB NAV -->
+      <div class="tab-nav">
+        <button class="tab-btn active" onclick="switchTab('visao-geral',this)">Visão Geral</button>
+        <button class="tab-btn" onclick="switchTab('vereadores',this)">Vereadores</button>
+        <button class="tab-btn" onclick="switchTab('temas',this)">Temas</button>
+        <button class="tab-btn" onclick="switchTab('discursos',this)">Discursos</button>
+      </div>
+
+      <!-- TAB: VISÃO GERAL -->
+      <div class="tab-pane active" id="tab-visao-geral">
+        <div class="kpi-row">
+          <div class="kpi total">
+            <div class="kpi-num" id="kpi-total">—</div>
+            <div class="kpi-label">Falas no filtro</div>
+            <div class="kpi-bar"><div class="kpi-bar-fill" style="width:100%"></div></div>
+            <div class="kpi-pct" id="kpi-total-sub"></div>
+          </div>
+          <div class="kpi fav">
+            <div class="kpi-num" id="kpi-fav">—</div>
+            <div class="kpi-label">Favoráveis</div>
+            <div class="kpi-bar"><div class="kpi-bar-fill" id="kpi-fav-bar" style="width:0%"></div></div>
+            <div class="kpi-pct" id="kpi-fav-pct"></div>
+          </div>
+          <div class="kpi neu">
+            <div class="kpi-num" id="kpi-neu">—</div>
+            <div class="kpi-label">Neutras</div>
+            <div class="kpi-bar"><div class="kpi-bar-fill" id="kpi-neu-bar" style="width:0%"></div></div>
+            <div class="kpi-pct" id="kpi-neu-pct"></div>
+          </div>
+          <div class="kpi ruim">
+            <div class="kpi-num" id="kpi-ruim">—</div>
+            <div class="kpi-label">Ruim / Crítico</div>
+            <div class="kpi-bar"><div class="kpi-bar-fill" id="kpi-ruim-bar" style="width:0%"></div></div>
+            <div class="kpi-pct" id="kpi-ruim-pct"></div>
+          </div>
+        </div>
+
+        <!-- Timeline -->
+        <div class="timeline-card">
+          <h3>Evolução por Sessão</h3>
+          <canvas id="timeline-canvas"></canvas>
+          <div class="timeline-legend">
+            <div class="tl-item"><div class="tl-line" style="background:var(--fav)"></div>Favorável</div>
+            <div class="tl-item"><div class="tl-line" style="background:var(--neu)"></div>Neutro</div>
+            <div class="tl-item"><div class="tl-line" style="background:var(--ruim)"></div>Ruim</div>
+          </div>
+        </div>
+
+        <!-- 2 charts -->
+        <div class="charts-2col">
+          <div class="chart-card">
+            <h3>Top Vereadores por Volume</h3>
+            <div id="chart-ver"></div>
+          </div>
+          <div class="chart-card">
+            <h3>Distribuição por Tema</h3>
+            <div class="donut-wrap">
+              <svg id="donut-svg" width="120" height="120" viewBox="0 0 120 120" style="flex-shrink:0"></svg>
+              <div class="donut-legend" id="donut-legend"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: VEREADORES -->
+      <div class="tab-pane" id="tab-vereadores">
+        <div class="section-title">Ranking de Participação</div>
+        <div class="ranking-card" id="ranking-card"></div>
+        <div class="charts-2col" style="margin-top:14px;">
+          <div class="chart-card">
+            <h3>Posicionamento por Vereador (Top 15)</h3>
+            <div id="chart-ver-full"></div>
+          </div>
+          <div class="chart-card">
+            <h3>Proporção Favorável vs Ruim</h3>
+            <div id="chart-ratio"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: TEMAS -->
+      <div class="tab-pane" id="tab-temas">
+        <div class="section-title">Análise por Tema</div>
+        <div class="chart-card" style="margin-bottom:14px;">
+          <h3>Volume e Posicionamento por Tema</h3>
+          <div id="chart-temas-full"></div>
+        </div>
+        <div class="charts-2col">
+          <div class="chart-card">
+            <h3>Temas com mais críticas</h3>
+            <div id="chart-temas-ruim"></div>
+          </div>
+          <div class="chart-card">
+            <h3>Temas com mais aprovação</h3>
+            <div id="chart-temas-fav"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: DISCURSOS -->
+      <div class="tab-pane" id="tab-discursos">
+        <div class="table-toolbar">
+          <label style="font-size:0.72rem;color:var(--muted);">Ordenar por</label>
+          <select class="sort-select" id="sort-select" onchange="onSortChange()">
+            <option value="sessao">Data</option>
+            <option value="vereador">Vereador</option>
+            <option value="secretaria">Tema</option>
+            <option value="posicionamento">Posicionamento</option>
+          </select>
+          <select class="sort-select" id="sort-dir" onchange="onSortChange()">
+            <option value="asc">Crescente</option>
+            <option value="desc">Decrescente</option>
+          </select>
+          <label style="font-size:0.72rem;color:var(--muted);margin-left:8px;">Por página</label>
+          <select class="per-page-select" id="per-page" onchange="onPerPageChange()">
+            <option value="10">10</option>
+            <option value="15" selected>15</option>
+            <option value="25">25</option>
+            <option value="50">50</option>
+          </select>
+          <button class="export-btn" onclick="exportCSV()">⬇ Exportar CSV</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th onclick="tableSort('vereador')">Vereador</th>
+                <th onclick="tableSort('sessao')">Data</th>
+                <th onclick="tableSort('secretaria')">Tema</th>
+                <th>Discurso</th>
+                <th onclick="tableSort('posicionamento')">Posição</th>
+              </tr>
+            </thead>
+            <tbody id="table-body"></tbody>
+          </table>
+          <div class="pagination" id="pagination"></div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /dashboard-screen -->
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal" onclick="maybeCloseModal(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-header">
+      <div class="modal-ver" id="modal-ver"></div>
+      <div class="modal-tags" id="modal-tags"></div>
+    </div>
+    <div class="modal-disc" id="modal-disc"></div>
+  </div>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<!-- ══════════════════════════════════════════════════════
+     REPORT MODAL
+═══════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="report-modal" onclick="maybeCloseReportModal(event)">
+  <div class="report-modal-inner">
+    <div class="report-modal-header">
+      <div>
+        <div class="report-modal-title">Gerar Relatório</div>
+        <div class="report-modal-sub">Configure e compartilhe via celular</div>
+      </div>
+      <button class="modal-close" onclick="closeReportModal()">✕</button>
+    </div>
+
+    <!-- CONFIG -->
+    <div class="report-config">
+      <div class="report-config-row">
+        <div class="report-config-label">Título do relatório</div>
+        <input type="text" id="report-title-input" class="report-input" placeholder="Ex: Sessões CMF — Fevereiro 2024" maxlength="80">
+      </div>
+      <div class="report-config-row">
+        <div class="report-config-label">Incluir seções</div>
+        <div class="report-checks">
+          <label class="rcheck"><input type="checkbox" id="rc-resumo" checked> Resumo geral</label>
+          <label class="rcheck"><input type="checkbox" id="rc-temas" checked> Top temas</label>
+          <label class="rcheck"><input type="checkbox" id="rc-vereadores" checked> Top vereadores</label>
+          <label class="rcheck"><input type="checkbox" id="rc-destaques" checked> Destaques (falas)</label>
+          <label class="rcheck"><input type="checkbox" id="rc-filtros"> Filtros aplicados</label>
+        </div>
+      </div>
+      <div class="report-config-row">
+        <div class="report-config-label">Nº de destaques por posição</div>
+        <select id="rc-n-destaques" class="sort-select" style="width:auto">
+          <option value="1">1 por posição</option>
+          <option value="2" selected>2 por posição</option>
+          <option value="3">3 por posição</option>
+          <option value="5">5 por posição</option>
+        </select>
+      </div>
+      <div class="report-config-row">
+        <div class="report-config-label">Formato do texto</div>
+        <div class="pill-group">
+          <button class="pill active" id="fmt-whats" onclick="setReportFmt('whats',this)">WhatsApp</button>
+          <button class="pill" id="fmt-email" onclick="setReportFmt('email',this)">E-mail</button>
+          <button class="pill" id="fmt-plain" onclick="setReportFmt('plain',this)">Texto simples</button>
+        </div>
+      </div>
+      <button class="report-gen-btn" onclick="generateReport()">✦ Gerar prévia</button>
+    </div>
+
+    <!-- PREVIEW -->
+    <div class="report-preview-wrap" id="report-preview-wrap" style="display:none">
+      <div class="report-preview-toolbar">
+        <span class="report-char-count" id="report-char-count"></span>
+        <div class="report-actions">
+          <button class="report-action-btn copy-btn" onclick="copyReport()">📋 Copiar</button>
+          <button class="report-action-btn whats-btn" onclick="sendWhatsApp()">📱 WhatsApp</button>
+          <button class="report-action-btn dl-btn" onclick="downloadReport()">⬇ Baixar .txt</button>
+        </div>
+      </div>
+      <div class="report-phone-wrap">
+        <div class="report-phone">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="phone-bubble" id="report-preview-text"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     JAVASCRIPT
+═══════════════════════════════════════════════════════ -->
+<script>
+// ── NORMALIZATION MAPS ─────────────────────────────────
+const SEC_MAP = {
+  'Assitência Social':'Assistência Social',
+  'Assistência Social e Guarda Municipal':'Assistência Social',
+  'Assistência Social/Segurança':'Assistência Social',
+  'Assistência Social e Segurança':'Assistência Social',
+  'Prefeito':'PMF',
+  'Prefeito Municipal':'PMF',
+  'Prefeitura':'PMF',
+  'Guarda Municipal':'Segurança',
+  'Sec. Continente':'Continente',
+  'Segurança Pública':'Segurança',
+  'Limpeza Urbana':'Meio Ambiente',
+  'Comcap':'Meio Ambiente',
+  'Taxa de Lixo':'Meio Ambiente',
+  'CPI do Lixo':'Meio Ambiente',
+  'Carnaval 2024':'Eventos/Cultura',
+  'PMSC/PMF':'Segurança',
+  'Câmara':'CMF',
+  'Sup. Pesca':'Pesca',
+  'Mobilidade':'Mobilidade Urbana',
+  'Transporte':'Mobilidade Urbana',
+  'PMSC':'Segurança',
+};
+
+const VER_MAP = {
+  'Afranio':'Afrânio Boppré','Afrâni Boppré':'Afrânio Boppré','Afrânio':'Afrânio Boppré',
+  'Dalmo Menses':'Dalmo Meneses','Diacono Ricardo':'Diácono Ricardo','Diácono Rircardo':'Diácono Ricardo',
+  'Jeferson':'Jeferson Backer','Tania Ramos':'Tânia Ramos','Roberto Katumi':'Katumi',
+  'Maycon Oliviera':'Maycon Oliveira','Noemi':'Noemi Leal','Elenira':'Elenira Vilela',
+  'Bruno Becler':'Bruno Becker',
+};
+
+function normSec(s) {
+  if (!s || s === 'None') return 'Não especificado';
+  s = s.trim();
+  return SEC_MAP[s] || s;
+}
+
+function normVer(s) {
+  if (!s) return '';
+  s = s.trim().split(' - ')[0].trim();
+  // Remove suffixes like "- Horário dos Partidos"
+  // They may already be split above
+  return VER_MAP[s] || s;
+}
+
+function normPos(s) {
+  if (!s) return 'Neutro';
+  s = s.trim();
+  if (s === 'Neutros') return 'Neutro';
+  return s;
+}
+
+function sheetNameToDate(name) {
+  // DDMMYYYY
+  const m = name.match(/^(\d{2})(\d{2})(\d{4})$/);
+  if (!m) return name;
+  return `${m[1]}/${m[2]}/${m[3]}`;
+}
+
+// ── STATE ──────────────────────────────────────────────
+let DATA = [];
+let FILTERS = { pos: 'all', tema: 'all', period: 'all', ver: new Set(), search: '' };
+let TABLE = { sort: 'sessao', dir: 'asc', page: 0, perPage: 15 };
+let activeTab = 'visao-geral';
+let tooltipData = null;
+
+// ── DRAG & DROP ────────────────────────────────────────
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault();
+  dz.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f) handleFile(f);
+});
+
+// ── FILE HANDLING ─────────────────────────────────────
+function handleFile(file) {
+  if (!file) return;
+  if (!file.name.match(/\.(xlsx|xls)$/i)) {
+    showToast('Formato inválido. Use .xlsx ou .xls');
+    return;
+  }
+  showLoading('Lendo arquivo…');
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      updateLoader('Processando planilhas…');
+      const wb = XLSX.read(e.target.result, { type: 'array' });
+      parseWorkbook(wb, file.name);
+    } catch(err) {
+      hideLoading();
+      showUpload();
+      showToast('Erro ao ler o arquivo: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function parseWorkbook(wb, filename) {
+  updateLoader('Normalizando dados…');
+  DATA = [];
+  wb.SheetNames.forEach(sheetName => {
+    const ws = wb.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+    if (rows.length < 2) return;
+    const dateStr = sheetNameToDate(sheetName);
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      const ver = normVer(row[0]);
+      if (!ver) continue;
+      DATA.push({
+        sessao: dateStr,
+        sessao_raw: sheetName,
+        vereador: ver,
+        discurso: (row[1] || '').toString().trim(),
+        secretaria: normSec((row[2] || '').toString()),
+        posicionamento: normPos((row[3] || '').toString()),
+      });
+    }
+  });
+
+  if (DATA.length === 0) {
+    hideLoading();
+    showUpload();
+    showToast('Nenhum dado encontrado. Verifique o formato da planilha.');
+    return;
+  }
+
+  updateLoader('Construindo dashboard…');
+  setTimeout(() => {
+    initDashboard(filename);
+    hideLoading();
+    showDashboard();
+  }, 100);
+}
+
+// ── UI TRANSITIONS ─────────────────────────────────────
+function showLoading(msg) {
+  document.getElementById('upload-screen').style.display = 'none';
+  document.getElementById('loading-screen').style.display = 'flex';
+  document.getElementById('loader-msg').textContent = msg || 'Carregando…';
+}
+function updateLoader(msg) { document.getElementById('loader-msg').textContent = msg; }
+function hideLoading() { document.getElementById('loading-screen').style.display = 'none'; }
+function showUpload() { document.getElementById('upload-screen').style.display = 'flex'; }
+function showDashboard() { document.getElementById('dashboard-screen').style.display = 'block'; }
+function resetToUpload() {
+  document.getElementById('dashboard-screen').style.display = 'none';
+  document.getElementById('upload-screen').style.display = 'flex';
+  document.getElementById('file-input').value = '';
+  DATA = [];
+  FILTERS = { pos: 'all', tema: 'all', period: 'all', ver: null, search: '' };
+}
+
+// ── INIT DASHBOARD ─────────────────────────────────────
+function initDashboard(filename) {
+  // Header
+  const name = filename.replace(/\.[^.]+$/, '').replace(/_/g,' ');
+  document.getElementById('header-title').textContent = name;
+
+  const allVer = [...new Set(DATA.map(d => d.vereador))].sort();
+  const allSessions = [...new Set(DATA.map(d => d.sessao))];
+  FILTERS.ver = null; // null = todos selecionados
+
+  document.getElementById('h-total').textContent = DATA.length;
+  document.getElementById('h-sessoes').textContent = allSessions.length;
+  document.getElementById('h-ver').textContent = allVer.length;
+  document.getElementById('header-sub').textContent = `${allSessions.length} sessões · ${allVer.length} parlamentares`;
+
+  buildPeriodButtons();
+  buildTemaPills();
+  buildVerList(allVer);
+  resetFilters();
+}
+
+function buildPeriodButtons() {
+  const months = {};
+  DATA.forEach(d => {
+    const m = d.sessao.substring(3,5);
+    const y = d.sessao.substring(6,10);
+    const key = m + '/' + y;
+    months[key] = months[key] || { month: m, label: monthLabel(m) + '/' + y.slice(2) };
+  });
+  const sorted = Object.keys(months).sort((a,b) => {
+    const [ma,ya] = a.split('/'), [mb,yb] = b.split('/');
+    return (ya+ma).localeCompare(yb+mb);
+  });
+  const grid = document.getElementById('period-grid');
+  grid.innerHTML = `<button class="period-btn active" data-period="all" onclick="setFilter('period','all',this)">Todos</button>`;
+  sorted.forEach(key => {
+    const { label } = months[key];
+    grid.innerHTML += `<button class="period-btn" data-period="${key}" onclick="setFilter('period','${key}',this)">${label}</button>`;
+  });
+}
+
+function monthLabel(m) {
+  const map = {'01':'Jan','02':'Fev','03':'Mar','04':'Abr','05':'Mai','06':'Jun','07':'Jul','08':'Ago','09':'Set','10':'Out','11':'Nov','12':'Dez'};
+  return map[m] || m;
+}
+
+function buildTemaPills() {
+  const counts = {};
+  DATA.forEach(d => {
+    if (d.secretaria !== 'Não especificado')
+      counts[d.secretaria] = (counts[d.secretaria]||0)+1;
+  });
+  const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,14);
+  document.getElementById('tema-count').textContent = Object.keys(counts).length;
+  const pills = document.getElementById('tema-pills');
+  pills.innerHTML = `<button class="pill active" data-tema="all" onclick="setFilter('tema','all',this)">Todos</button>`;
+  sorted.forEach(([t]) => {
+    const tSafe = t.replace(/'/g, "\\'");
+    pills.innerHTML += `<button class="pill" data-tema="${t}" onclick="setFilter('tema','${tSafe}',this)">${t}</button>`;
+  });
+}
+
+function buildVerList(allVer) {
+  const counts = {};
+  DATA.forEach(d => counts[d.vereador] = (counts[d.vereador]||0)+1);
+  const sorted = allVer.sort((a,b) => (counts[b]||0)-(counts[a]||0));
+  const list = document.getElementById('ver-list');
+  list.innerHTML = sorted.map(v => {
+    const id = 'vi_' + v.replace(/[^a-zA-Z0-9]/g,'_');
+    const vSafe = v.replace(/'/g,"\\'");
+    const fav = DATA.filter(d=>d.vereador===v&&d.posicionamento==='Favorável').length;
+    const ruim = DATA.filter(d=>d.vereador===v&&d.posicionamento==='Ruim').length;
+    const total = counts[v]||0;
+    const wF = total>0?(fav/total*32).toFixed(0):0;
+    const wR = total>0?(ruim/total*32).toFixed(0):0;
+    return `<div class="ver-item selected" id="${id}" onclick="toggleVer('${vSafe}')">
+      <div class="ver-check">✓</div>
+      <span>${v}</span>
+      <div class="ver-spark">
+        <div class="ver-spark-bar" style="height:${Math.max(2,wF)}px;background:var(--fav);width:4px"></div>
+        <div class="ver-spark-bar" style="height:${Math.max(2,wR)}px;background:var(--ruim);width:4px"></div>
+      </div>
+      <span class="ver-count">${total}</span>
+    </div>`;
+  }).join('');
+  updateVerSelectedCount();
+}
+
+// ── FILTERS ────────────────────────────────────────────
+function setFilter(type, val, btn) {
+  if (type === 'pos') {
+    FILTERS.pos = val;
+    document.querySelectorAll('[data-pos]').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+  } else if (type === 'tema') {
+    FILTERS.tema = val;
+    document.querySelectorAll('[data-tema]').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+  } else if (type === 'period') {
+    FILTERS.period = val;
+    document.querySelectorAll('[data-period]').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  TABLE.page = 0;
+  applyFilters();
+}
+
+// FILTERS.ver semântica:
+//   null  → todos selecionados (sem filtro)
+//   Set   → apenas os vereadores no Set estão selecionados
+
+function getAllVer() {
+  return [...new Set(DATA.map(d => d.vereador))];
+}
+
+function isVerSelected(v) {
+  return FILTERS.ver === null || FILTERS.ver.has(v);
+}
+
+function toggleVer(v) {
+  if (FILTERS.ver === null) {
+    // todos estavam selecionados → desseleciona só este
+    FILTERS.ver = new Set(getAllVer());
+    FILTERS.ver.delete(v);
+  } else if (FILTERS.ver.has(v)) {
+    FILTERS.ver.delete(v);
+  } else {
+    FILTERS.ver.add(v);
+    // se todos estão no Set, volta para null (= todos)
+    const all = getAllVer();
+    if (FILTERS.ver.size >= all.length) FILTERS.ver = null;
+  }
+  updateVerUI();
+  TABLE.page = 0;
+  applyFilters();
+}
+
+function selectAllVer() {
+  FILTERS.ver = null;
+  updateVerUI();
+  TABLE.page = 0;
+  applyFilters();
+}
+
+function deselectAllVer() {
+  FILTERS.ver = new Set(); // Set vazio = nenhum selecionado
+  updateVerUI();
+  TABLE.page = 0;
+  applyFilters();
+}
+
+function updateVerUI() {
+  getAllVer().forEach(v => {
+    const id = 'vi_' + v.replace(/[^a-zA-Z0-9]/g,'_');
+    const el = document.getElementById(id);
+    if (!el) return;
+    const selected = isVerSelected(v);
+    el.classList.toggle('selected', selected);
+    el.querySelector('.ver-check').textContent = selected ? '✓' : '';
+  });
+  updateVerSelectedCount();
+}
+
+function updateVerSelectedCount() {
+  const all = getAllVer();
+  const badge = document.getElementById('ver-selected-count');
+  if (FILTERS.ver === null) {
+    badge.textContent = 'Todos';
+  } else {
+    badge.textContent = `${FILTERS.ver.size}/${all.length}`;
+  }
+}
+
+function filterVerList() {
+  const q = document.getElementById('ver-search-input').value.toLowerCase();
+  document.querySelectorAll('.ver-item').forEach(el => {
+    el.style.display = el.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+
+function onSearch() {
+  FILTERS.search = document.getElementById('global-search').value.trim();
+  TABLE.page = 0;
+  applyFilters();
+}
+
+function clearAllFilters() {
+  FILTERS = { pos:'all', tema:'all', period:'all', ver:null, search:'' };
+  document.getElementById('global-search').value = '';
+  document.querySelectorAll('[data-pos]').forEach(b=>b.classList.remove('active'));
+  document.querySelector('[data-pos="all"]').classList.add('active');
+  document.querySelectorAll('[data-tema]').forEach(b=>b.classList.remove('active'));
+  document.querySelector('[data-tema="all"]').classList.add('active');
+  document.querySelectorAll('[data-period]').forEach(b=>b.classList.remove('active'));
+  document.querySelector('[data-period="all"]').classList.add('active');
+  updateVerUI();
+  TABLE.page = 0;
+  applyFilters();
+}
+
+function resetFilters() { clearAllFilters(); }
+
+// ── GET FILTERED DATA ──────────────────────────────────
+function getFiltered() {
+  const sq = FILTERS.search.toLowerCase();
+  return DATA.filter(d => {
+    if (FILTERS.pos !== 'all' && d.posicionamento !== FILTERS.pos) return false;
+    if (FILTERS.tema !== 'all' && d.secretaria !== FILTERS.tema) return false;
+    if (FILTERS.period !== 'all') {
+      const m = d.sessao.substring(3,5);
+      const y = d.sessao.substring(6,10);
+      const key = m + '/' + y;
+      if (key !== FILTERS.period) return false;
+    }
+    if (FILTERS.ver !== null && !FILTERS.ver.has(d.vereador)) return false;
+    if (sq && !d.discurso.toLowerCase().includes(sq) &&
+              !d.vereador.toLowerCase().includes(sq) &&
+              !d.secretaria.toLowerCase().includes(sq)) return false;
+    return true;
+  });
+}
+
+// ── APPLY FILTERS ──────────────────────────────────────
+function applyFilters() {
+  const filtered = getFiltered();
+  updateActiveFilterTags();
+  updateKPIs(filtered);
+  updateTimeline(filtered);
+  updateChartVer(filtered, 'chart-ver', 12);
+  updateDonut(filtered);
+  updateRanking(filtered);
+  updateChartVer(filtered, 'chart-ver-full', 15);
+  updateChartRatio(filtered);
+  updateChartTemas(filtered);
+  updateTable(filtered);
+}
+
+// ── ACTIVE FILTER TAGS ─────────────────────────────────
+function updateActiveFilterTags() {
+  const container = document.getElementById('active-filters');
+  const clearBtn = document.getElementById('clear-all-btn');
+  const tags = [];
+
+  if (FILTERS.pos !== 'all') tags.push({label: 'Posição: ' + FILTERS.pos, key: 'pos'});
+  if (FILTERS.tema !== 'all') tags.push({label: 'Tema: ' + FILTERS.tema, key: 'tema'});
+  if (FILTERS.period !== 'all') tags.push({label: 'Período: ' + FILTERS.period, key: 'period'});
+  if (FILTERS.search) tags.push({label: '🔍 "' + FILTERS.search + '"', key: 'search'});
+  if (FILTERS.ver !== null) {
+    const sel = FILTERS.ver.size;
+    const total = getAllVer().length;
+    tags.push({label: `Vereadores: ${sel}/${total} selecionados`, key: 'ver'});
+  }
+
+  container.innerHTML = tags.map(t =>
+    `<div class="filter-tag">${t.label}<button onclick="clearTag('${t.key}')">✕</button></div>`
+  ).join('');
+
+  clearBtn.style.display = tags.length > 0 ? 'inline' : 'none';
+}
+
+function clearTag(key) {
+  if (key === 'pos') {
+    FILTERS.pos = 'all';
+    document.querySelectorAll('[data-pos]').forEach(b=>b.classList.remove('active'));
+    document.querySelector('[data-pos="all"]').classList.add('active');
+  } else if (key === 'tema') {
+    FILTERS.tema = 'all';
+    document.querySelectorAll('[data-tema]').forEach(b=>b.classList.remove('active'));
+    document.querySelector('[data-tema="all"]').classList.add('active');
+  } else if (key === 'period') {
+    FILTERS.period = 'all';
+    document.querySelectorAll('[data-period]').forEach(b=>b.classList.remove('active'));
+    document.querySelector('[data-period="all"]').classList.add('active');
+  } else if (key === 'search') {
+    FILTERS.search = '';
+    document.getElementById('global-search').value = '';
+  } else if (key === 'ver') {
+    FILTERS.ver = null;
+    updateVerUI();
+  }
+  TABLE.page = 0;
+  applyFilters();
+}
+
+// ── KPIs ───────────────────────────────────────────────
+function updateKPIs(data) {
+  const total = data.length;
+  const fav = data.filter(d=>d.posicionamento==='Favorável').length;
+  const neu = data.filter(d=>d.posicionamento==='Neutro').length;
+  const ruim = data.filter(d=>d.posicionamento==='Ruim').length;
+  const pct = n => total > 0 ? (n/total*100).toFixed(1)+'%' : '—';
+
+  document.getElementById('kpi-total').textContent = total;
+  document.getElementById('kpi-fav').textContent = fav;
+  document.getElementById('kpi-neu').textContent = neu;
+  document.getElementById('kpi-ruim').textContent = ruim;
+  document.getElementById('kpi-total-sub').textContent = total + ' de ' + DATA.length + ' registros';
+  document.getElementById('kpi-fav-pct').textContent = pct(fav);
+  document.getElementById('kpi-neu-pct').textContent = pct(neu);
+  document.getElementById('kpi-ruim-pct').textContent = pct(ruim);
+  document.getElementById('kpi-fav-bar').style.width = pct(fav);
+  document.getElementById('kpi-neu-bar').style.width = pct(neu);
+  document.getElementById('kpi-ruim-bar').style.width = pct(ruim);
+}
+
+// ── TIMELINE ───────────────────────────────────────────
+function updateTimeline(data) {
+  const canvas = document.getElementById('timeline-canvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.parentElement.clientWidth - 36;
+  const H = 130;
+  canvas.width = W * devicePixelRatio;
+  canvas.height = H * devicePixelRatio;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  ctx.clearRect(0,0,W,H);
+
+  const allDates = [...new Set(DATA.map(d=>d.sessao))].sort((a,b) => {
+    const pa=a.split('/'), pb=b.split('/');
+    return new Date(pa[2],pa[1]-1,pa[0]) - new Date(pb[2],pb[1]-1,pb[0]);
+  });
+
+  const sessData = {};
+  data.forEach(d => {
+    if (!sessData[d.sessao]) sessData[d.sessao]={fav:0,neu:0,ruim:0};
+    if (d.posicionamento==='Favorável') sessData[d.sessao].fav++;
+    else if (d.posicionamento==='Neutro') sessData[d.sessao].neu++;
+    else sessData[d.sessao].ruim++;
+  });
+
+  const maxVal = Math.max(1, ...allDates.map(d=>{const s=sessData[d];return s?s.fav+s.neu+s.ruim:0;}));
+  const pad={l:8,r:8,t:10,b:24};
+  const cW=W-pad.l-pad.r, cH=H-pad.t-pad.b;
+  const N=allDates.length, step=cW/Math.max(N-1,1);
+
+  // Grid
+  ctx.strokeStyle='rgba(255,255,255,0.04)';
+  ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){
+    const y=pad.t+(cH/4)*i;
+    ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(W-pad.r,y);ctx.stroke();
+  }
+
+  // Lines
+  const drawSeries = (key, color) => {
+    ctx.beginPath();
+    ctx.strokeStyle=color;
+    ctx.lineWidth=1.8;
+    ctx.globalAlpha=0.85;
+    allDates.forEach((d,i)=>{
+      const s=sessData[d];
+      const val=s?s[key]:0;
+      const x=pad.l+i*step, y=pad.t+cH-(val/maxVal*cH);
+      if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+    ctx.globalAlpha=1;
+  };
+
+  drawSeries('ruim','#d4625a');
+  drawSeries('neu','#7eb8d4');
+  drawSeries('fav','#4caf82');
+
+  // Dots
+  const dotSeries = [
+    {key:'fav',color:'#4caf82'},
+    {key:'neu',color:'#7eb8d4'},
+    {key:'ruim',color:'#d4625a'},
+  ];
+  dotSeries.forEach(({key,color}) => {
+    allDates.forEach((d,i) => {
+      const s=sessData[d];
+      const val=s?s[key]:0;
+      if(!val)return;
+      const x=pad.l+i*step, y=pad.t+cH-(val/maxVal*cH);
+      ctx.beginPath();
+      ctx.arc(x,y,2.5,0,Math.PI*2);
+      ctx.fillStyle=color;
+      ctx.fill();
+    });
+  });
+
+  // X labels
+  ctx.fillStyle='rgba(122,126,144,0.7)';
+  ctx.font=`${8*1}px 'DM Mono', monospace`;
+  ctx.textAlign='center';
+  const labelStep=Math.max(1,Math.floor(N/8));
+  allDates.forEach((d,i)=>{
+    if(i%labelStep!==0)return;
+    const x=pad.l+i*step;
+    ctx.fillText(d.substring(0,5),x,H-4);
+  });
+}
+
+// ── CHART VER ──────────────────────────────────────────
+function updateChartVer(data, targetId, maxN) {
+  const counts = {};
+  data.forEach(d => {
+    if (!counts[d.vereador]) counts[d.vereador]={fav:0,neu:0,ruim:0};
+    if (d.posicionamento==='Favorável') counts[d.vereador].fav++;
+    else if (d.posicionamento==='Neutro') counts[d.vereador].neu++;
+    else counts[d.vereador].ruim++;
+  });
+  const sorted = Object.entries(counts).sort((a,b)=>(b[1].fav+b[1].neu+b[1].ruim)-(a[1].fav+a[1].neu+a[1].ruim)).slice(0,maxN);
+  const maxV = sorted.length>0 ? sorted[0][1].fav+sorted[0][1].neu+sorted[0][1].ruim : 1;
+  const el = document.getElementById(targetId);
+  if(!el) return;
+  if(sorted.length===0){el.innerHTML='<div class="no-data">Sem dados</div>';return;}
+  el.innerHTML = sorted.map(([name,c])=>{
+    const total=c.fav+c.neu+c.ruim;
+    const wF=(c.fav/maxV*100).toFixed(1), wN=(c.neu/maxV*100).toFixed(1), wR=(c.ruim/maxV*100).toFixed(1);
+    const shortName = name.length > 14 ? name.split(' ').slice(0,2).join(' ') : name;
+    return `<div class="bar-row">
+      <div class="bar-label" title="${name}">${shortName}</div>
+      <div class="bar-track">
+        <div class="bar-seg" style="width:${wF}%;background:var(--fav)"></div>
+        <div class="bar-seg" style="width:${wN}%;background:var(--neu)"></div>
+        <div class="bar-seg" style="width:${wR}%;background:var(--ruim)"></div>
+      </div>
+      <div class="bar-total">${total}</div>
+    </div>`;
+  }).join('') + legendRow();
+}
+
+function legendRow() {
+  return `<div class="legend-row">
+    <span><span class="legend-dot" style="background:var(--fav)"></span>Favorável</span>
+    <span><span class="legend-dot" style="background:var(--neu)"></span>Neutro</span>
+    <span><span class="legend-dot" style="background:var(--ruim)"></span>Ruim</span>
+  </div>`;
+}
+
+// ── DONUT ──────────────────────────────────────────────
+function updateDonut(data) {
+  const counts = {};
+  data.forEach(d => {
+    const t = (d.secretaria && d.secretaria!=='Não especificado') ? d.secretaria : 'Outros';
+    counts[t]=(counts[t]||0)+1;
+  });
+  const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,7);
+  const totalT = sorted.reduce((s,[,v])=>s+v,0);
+  const colors=['#c8a96e','#7eb8d4','#4caf82','#d4625a','#a07bd4','#d4a05a','#5ab8a4'];
+
+  const svg = document.getElementById('donut-svg');
+  const legend = document.getElementById('donut-legend');
+  if(!svg||!legend)return;
+
+  let angleStart=-Math.PI/2;
+  const cx=60,cy=60,r=46,ir=28;
+  let paths='';
+  sorted.forEach(([name,val],i)=>{
+    const angle=(val/totalT)*2*Math.PI;
+    const x1=cx+r*Math.cos(angleStart),y1=cy+r*Math.sin(angleStart);
+    const x2=cx+r*Math.cos(angleStart+angle),y2=cy+r*Math.sin(angleStart+angle);
+    const xi1=cx+ir*Math.cos(angleStart),yi1=cy+ir*Math.sin(angleStart);
+    const xi2=cx+ir*Math.cos(angleStart+angle),yi2=cy+ir*Math.sin(angleStart+angle);
+    const large=angle>Math.PI?1:0;
+    const n=name.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    paths+=`<path d="M${x1},${y1} A${r},${r} 0 ${large},1 ${x2},${y2} L${xi2},${yi2} A${ir},${ir} 0 ${large},0 ${xi1},${yi1} Z" fill="${colors[i]}" opacity="0.9" title="${n}"/>`;
+    angleStart+=angle;
+  });
+  svg.innerHTML=paths+`<circle cx="${cx}" cy="${cy}" r="${ir-1}" fill="var(--surface)"/><text x="${cx}" y="${cy+4}" text-anchor="middle" font-size="9" fill="var(--muted)" font-family="DM Mono">${totalT}</text>`;
+
+  legend.innerHTML=sorted.map(([name,val],i)=>`
+    <div class="donut-item">
+      <div class="donut-dot" style="background:${colors[i]}"></div>
+      <span class="donut-name">${name.length>16?name.slice(0,14)+'…':name}</span>
+      <span class="donut-val">${val}</span>
+    </div>`).join('');
+}
+
+// ── RANKING ────────────────────────────────────────────
+function updateRanking(data) {
+  const counts = {};
+  data.forEach(d => {
+    if (!counts[d.vereador]) counts[d.vereador]={fav:0,neu:0,ruim:0};
+    if (d.posicionamento==='Favorável') counts[d.vereador].fav++;
+    else if (d.posicionamento==='Neutro') counts[d.vereador].neu++;
+    else counts[d.vereador].ruim++;
+  });
+  const sorted = Object.entries(counts).sort((a,b)=>(b[1].fav+b[1].neu+b[1].ruim)-(a[1].fav+a[1].neu+a[1].ruim)).slice(0,12);
+  const el = document.getElementById('ranking-card');
+  if(!el)return;
+  if(sorted.length===0){el.innerHTML='<div class="no-data">Sem dados</div>';return;}
+  const maxT = sorted[0][1].fav+sorted[0][1].neu+sorted[0][1].ruim;
+  el.innerHTML = `<h3>Ranking por Volume de Falas</h3>` + sorted.map(([name,c],i)=>{
+    const total=c.fav+c.neu+c.ruim;
+    const wF=Math.round(c.fav/total*80), wN=Math.round(c.neu/total*80), wR=Math.round(c.ruim/total*80);
+    const vSafe=name.replace(/'/g,"\\'");
+    return `<div class="rank-row" onclick="filterByVer('${vSafe}')">
+      <div class="rank-num">${i+1}</div>
+      <div class="rank-name">${name}</div>
+      <div class="rank-mini-bars">
+        <div class="rank-mini-bar" style="width:${wF}px;background:var(--fav)" title="Favorável: ${c.fav}"></div>
+        <div class="rank-mini-bar" style="width:${wN}px;background:var(--neu)" title="Neutro: ${c.neu}"></div>
+        <div class="rank-mini-bar" style="width:${wR}px;background:var(--ruim)" title="Ruim: ${c.ruim}"></div>
+      </div>
+      <div class="rank-total">${total}</div>
+    </div>`;
+  }).join('');
+}
+
+function filterByVer(v) {
+  FILTERS.ver = new Set([v]); // seleciona só este vereador
+  updateVerUI();
+  TABLE.page=0;
+  applyFilters();
+  switchTab('discursos', document.querySelector('[onclick*="discursos"]'));
+}
+
+// ── CHART RATIO ────────────────────────────────────────
+function updateChartRatio(data) {
+  const counts = {};
+  data.forEach(d => {
+    if (!counts[d.vereador]) counts[d.vereador]={fav:0,ruim:0};
+    if (d.posicionamento==='Favorável') counts[d.vereador].fav++;
+    else if (d.posicionamento==='Ruim') counts[d.vereador].ruim++;
+  });
+  const sorted = Object.entries(counts)
+    .filter(([,c])=>(c.fav+c.ruim)>=3)
+    .sort((a,b)=>{
+      const ra=a[1].fav/(a[1].fav+a[1].ruim||1);
+      const rb=b[1].fav/(b[1].fav+b[1].ruim||1);
+      return rb-ra;
+    }).slice(0,12);
+
+  const el = document.getElementById('chart-ratio');
+  if(!el)return;
+  if(sorted.length===0){el.innerHTML='<div class="no-data">Sem dados</div>';return;}
+
+  el.innerHTML = sorted.map(([name,c])=>{
+    const total=c.fav+c.ruim||1;
+    const pF=(c.fav/total*100).toFixed(0);
+    const pR=(c.ruim/total*100).toFixed(0);
+    const shortName=name.split(' ').slice(0,2).join(' ');
+    return `<div class="bar-row">
+      <div class="bar-label" title="${name}">${shortName}</div>
+      <div class="bar-track">
+        <div class="bar-seg" style="width:${pF}%;background:var(--fav)"></div>
+        <div class="bar-seg" style="width:${pR}%;background:var(--ruim)"></div>
+      </div>
+      <div class="bar-total" style="font-size:0.58rem">${pF}%</div>
+    </div>`;
+  }).join('') + `<div class="legend-row">
+    <span><span class="legend-dot" style="background:var(--fav)"></span>% Favorável</span>
+    <span><span class="legend-dot" style="background:var(--ruim)"></span>% Ruim</span>
+  </div>`;
+}
+
+// ── CHART TEMAS ────────────────────────────────────────
+function updateChartTemas(data) {
+  const counts = {};
+  data.forEach(d => {
+    const t=d.secretaria&&d.secretaria!=='Não especificado'?d.secretaria:'Outros';
+    if (!counts[t]) counts[t]={fav:0,neu:0,ruim:0};
+    if (d.posicionamento==='Favorável') counts[t].fav++;
+    else if (d.posicionamento==='Neutro') counts[t].neu++;
+    else counts[t].ruim++;
+  });
+
+  const sorted = Object.entries(counts).filter(([k])=>k!=='Outros').sort((a,b)=>(b[1].fav+b[1].neu+b[1].ruim)-(a[1].fav+a[1].neu+a[1].ruim)).slice(0,12);
+  const maxT = sorted.length>0?Math.max(...sorted.map(([,c])=>c.fav+c.neu+c.ruim)):1;
+
+  const el = document.getElementById('chart-temas-full');
+  if(!el)return;
+  el.innerHTML = sorted.map(([name,c])=>{
+    const total=c.fav+c.neu+c.ruim;
+    const wF=(c.fav/maxT*100).toFixed(1), wN=(c.neu/maxT*100).toFixed(1), wR=(c.ruim/maxT*100).toFixed(1);
+    const shortName=name.length>18?name.slice(0,16)+'…':name;
+    return `<div class="bar-row">
+      <div class="bar-label" style="width:140px" title="${name}">${shortName}</div>
+      <div class="bar-track">
+        <div class="bar-seg" style="width:${wF}%;background:var(--fav)"></div>
+        <div class="bar-seg" style="width:${wN}%;background:var(--neu)"></div>
+        <div class="bar-seg" style="width:${wR}%;background:var(--ruim)"></div>
+      </div>
+      <div class="bar-total">${total}</div>
+    </div>`;
+  }).join('') + legendRow();
+
+  // Top ruim
+  const byRuim = [...sorted].sort((a,b)=>b[1].ruim-a[1].ruim).slice(0,8);
+  const maxR = byRuim.length>0?byRuim[0][1].ruim:1;
+  const elR = document.getElementById('chart-temas-ruim');
+  if(elR) elR.innerHTML = byRuim.map(([name,c])=>{
+    const shortName=name.length>18?name.slice(0,16)+'…':name;
+    return `<div class="bar-row">
+      <div class="bar-label" style="width:130px" title="${name}">${shortName}</div>
+      <div class="bar-track"><div class="bar-seg" style="width:${(c.ruim/maxR*100).toFixed(1)}%;background:var(--ruim)"></div></div>
+      <div class="bar-total">${c.ruim}</div>
+    </div>`;
+  }).join('');
+
+  // Top fav
+  const byFav = [...sorted].sort((a,b)=>b[1].fav-a[1].fav).slice(0,8);
+  const maxF = byFav.length>0?byFav[0][1].fav:1;
+  const elF = document.getElementById('chart-temas-fav');
+  if(elF) elF.innerHTML = byFav.map(([name,c])=>{
+    const shortName=name.length>18?name.slice(0,16)+'…':name;
+    return `<div class="bar-row">
+      <div class="bar-label" style="width:130px" title="${name}">${shortName}</div>
+      <div class="bar-track"><div class="bar-seg" style="width:${(c.fav/maxF*100).toFixed(1)}%;background:var(--fav)"></div></div>
+      <div class="bar-total">${c.fav}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── TABLE ──────────────────────────────────────────────
+function tableSort(field) {
+  if (TABLE.sort===field) TABLE.dir=TABLE.dir==='asc'?'desc':'asc';
+  else { TABLE.sort=field; TABLE.dir='asc'; }
+  document.getElementById('sort-select').value=field;
+  TABLE.page=0;
+  applyFilters();
+}
+
+function onSortChange() {
+  TABLE.sort=document.getElementById('sort-select').value;
+  TABLE.dir=document.getElementById('sort-dir').value;
+  TABLE.page=0;
+  applyFilters();
+}
+
+function onPerPageChange() {
+  TABLE.perPage=parseInt(document.getElementById('per-page').value)||15;
+  TABLE.page=0;
+  applyFilters();
+}
+
+function updateTable(data) {
+  const sorted = [...data].sort((a,b)=>{
+    let va=a[TABLE.sort]||'', vb=b[TABLE.sort]||'';
+    if (TABLE.sort==='sessao') {
+      const pa=va.split('/'),pb=vb.split('/');
+      va=pa[2]+pa[1]+pa[0]; vb=pb[2]+pb[1]+pb[0];
+    }
+    const cmp=va.localeCompare(vb,'pt');
+    return TABLE.dir==='asc'?cmp:-cmp;
+  });
+
+  const totalPages=Math.ceil(sorted.length/TABLE.perPage);
+  TABLE.page=Math.min(TABLE.page,Math.max(0,totalPages-1));
+  const slice=sorted.slice(TABLE.page*TABLE.perPage,(TABLE.page+1)*TABLE.perPage);
+  const sq=FILTERS.search.toLowerCase();
+
+  const tbody=document.getElementById('table-body');
+  if(slice.length===0){
+    tbody.innerHTML=`<tr><td colspan="5"><div class="no-data"><span class="empty-icon">🔍</span>Nenhum resultado para os filtros aplicados.</div></td></tr>`;
+  } else {
+    tbody.innerHTML=slice.map((d,i)=>{
+      const posClass=d.posicionamento==='Favorável'?'fav':d.posicionamento==='Neutro'?'neu':'ruim';
+      const posLabel=d.posicionamento==='Favorável'?'✓ Favorável':d.posicionamento==='Neutro'?'~ Neutro':'✗ Ruim';
+      const tema=d.secretaria&&d.secretaria!=='Não especificado'?d.secretaria:'—';
+      const discSnip=sq?highlight(d.discurso.slice(0,200),sq):d.discurso.slice(0,200);
+      const idx=TABLE.page*TABLE.perPage+i;
+      return `<tr data-idx="${idx}">
+        <td class="td-ver">${sq?highlight(d.vereador,sq):d.vereador}</td>
+        <td class="td-date">${d.sessao}</td>
+        <td class="td-tema" title="${tema}">${sq?highlight(tema,sq):tema}</td>
+        <td class="td-disc"><div class="disc-clamp">${discSnip}…</div></td>
+        <td><span class="badge ${posClass}">${posLabel}</span></td>
+      </tr>`;
+    }).join('');
+
+    document.querySelectorAll('#table-body tr').forEach((tr,i)=>{
+      tr.addEventListener('click',()=>openModal(slice[i]));
+    });
+  }
+
+  // Sort indicators
+  document.querySelectorAll('thead th').forEach(th=>{
+    th.classList.remove('sort-asc','sort-desc');
+  });
+
+  renderPagination(totalPages, sorted.length);
+}
+
+function highlight(text, q) {
+  if(!q)return text;
+  const regex=new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi');
+  return text.replace(regex,'<mark>$1</mark>');
+}
+
+function renderPagination(totalPages, total) {
+  const pg=document.getElementById('pagination');
+  if(totalPages<=1){pg.innerHTML=`<span class="page-info">${total} registro${total!==1?'s':''}</span>`;return;}
+  let html=`<span class="page-info">${TABLE.page*TABLE.perPage+1}–${Math.min((TABLE.page+1)*TABLE.perPage,total)} de ${total}</span>`;
+  html+=`<button class="page-btn" onclick="goPage(${TABLE.page-1})" ${TABLE.page===0?'disabled':''}>‹</button>`;
+  const range=2;
+  for(let i=0;i<totalPages;i++){
+    if(i===0||i===totalPages-1||(i>=TABLE.page-range&&i<=TABLE.page+range)){
+      html+=`<button class="page-btn ${i===TABLE.page?'active':''}" onclick="goPage(${i})">${i+1}</button>`;
+    } else if(i===TABLE.page-range-1||i===TABLE.page+range+1){
+      html+=`<span class="page-info">…</span>`;
+    }
+  }
+  html+=`<button class="page-btn" onclick="goPage(${TABLE.page+1})" ${TABLE.page===totalPages-1?'disabled':''}>›</button>`;
+  pg.innerHTML=html;
+}
+
+function goPage(p) {
+  TABLE.page=p;
+  applyFilters();
+  document.querySelector('.table-wrap')?.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+// ── MODAL ──────────────────────────────────────────────
+function openModal(d) {
+  const posClass=d.posicionamento==='Favorável'?'fav':d.posicionamento==='Neutro'?'neu':'ruim';
+  const posLabel=d.posicionamento==='Favorável'?'✓ Favorável':d.posicionamento==='Neutro'?'~ Neutro':'✗ Ruim';
+  document.getElementById('modal-ver').textContent=d.vereador;
+  document.getElementById('modal-tags').innerHTML=`
+    <span class="modal-tag">${d.sessao}</span>
+    ${d.secretaria&&d.secretaria!=='Não especificado'?`<span class="modal-tag" style="color:var(--accent2);border-color:rgba(126,184,212,0.3)">${d.secretaria}</span>`:''}
+    <span class="badge ${posClass}" style="margin-left:4px">${posLabel}</span>
+  `;
+  document.getElementById('modal-disc').textContent=d.discurso;
+  document.getElementById('modal').classList.add('open');
+}
+
+function maybeCloseModal(e) {
+  if(e.target===document.getElementById('modal'))closeModal();
+}
+
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+
+// ── TAB SWITCHING ──────────────────────────────────────
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(b=>{
+    if(b.getAttribute('onclick')&&b.getAttribute('onclick').includes(id))b.classList.add('active');
+  });
+  activeTab=id;
+  if(id==='visao-geral') {
+    setTimeout(()=>updateTimeline(getFiltered()),50);
+  }
+}
+
+// ── EXPORT CSV ─────────────────────────────────────────
+function exportCSV() {
+  const filtered=getFiltered();
+  const header=['Vereador','Sessão','Secretaria/Tema','Discurso','Posicionamento'];
+  const rows=filtered.map(d=>[
+    `"${d.vereador.replace(/"/g,'""')}"`,
+    `"${d.sessao}"`,
+    `"${d.secretaria.replace(/"/g,'""')}"`,
+    `"${d.discurso.replace(/"/g,'""')}"`,
+    `"${d.posicionamento}"`
+  ].join(','));
+  const csv=[header.join(','),...rows].join('\n');
+  const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download='cmf_discursos_filtrado.csv';
+  a.click(); URL.revokeObjectURL(url);
+}
+
+// ── TOAST ──────────────────────────────────────────────
+function showToast(msg) {
+  const t=document.createElement('div');
+  t.className='toast'; t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),4200);
+}
+
+// ── RESIZE ────────────────────────────────────────────
+window.addEventListener('resize',()=>{
+  if(DATA.length>0)updateTimeline(getFiltered());
+});
+
+// ═══════════════════════════════════════════════════════
+//  RELATÓRIO
+// ═══════════════════════════════════════════════════════
+let reportFmt = 'whats';
+let reportText = '';
+
+function setReportFmt(fmt, btn) {
+  reportFmt = fmt;
+  document.querySelectorAll('#report-modal .pill').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function openReportModal() {
+  // Preenche título sugerido com base nos filtros ativos
+  const filtered = getFiltered();
+  let suggestion = 'Relatório CMF';
+  if (FILTERS.period !== 'all') suggestion += ' — ' + FILTERS.period;
+  if (FILTERS.tema !== 'all') suggestion += ' · ' + FILTERS.tema;
+  const inp = document.getElementById('report-title-input');
+  if (!inp.value) inp.value = suggestion;
+  document.getElementById('report-preview-wrap').style.display = 'none';
+  document.getElementById('report-modal').classList.add('open');
+}
+
+function closeReportModal() {
+  document.getElementById('report-modal').classList.remove('open');
+}
+
+function maybeCloseReportModal(e) {
+  if (e.target === document.getElementById('report-modal')) closeReportModal();
+}
+
+function generateReport() {
+  const filtered = getFiltered();
+  const title = document.getElementById('report-title-input').value.trim() || 'Relatório CMF';
+  const incResumo = document.getElementById('rc-resumo').checked;
+  const incTemas = document.getElementById('rc-temas').checked;
+  const incVer = document.getElementById('rc-vereadores').checked;
+  const incDest = document.getElementById('rc-destaques').checked;
+  const incFiltros = document.getElementById('rc-filtros').checked;
+  const nDest = parseInt(document.getElementById('rc-n-destaques').value) || 2;
+
+  const fmt = reportFmt;
+  const isWhats = fmt === 'whats';
+  const isEmail = fmt === 'email';
+
+  // Helpers de formatação
+  const bold = (t) => isWhats ? `*${t}*` : isEmail ? `**${t}**` : t.toUpperCase();
+  const italic = (t) => isWhats ? `_${t}_` : t;
+  const line = (n=1) => '\n'.repeat(n);
+  const divider = () => isWhats ? '─────────────────────' : '─────────────────────';
+  const bullet = (t) => `• ${t}`;
+  const emoji = (e, fallback='') => (isWhats || isEmail) ? e : fallback;
+
+  const total = filtered.length;
+  const fav = filtered.filter(d => d.posicionamento === 'Favorável').length;
+  const neu = filtered.filter(d => d.posicionamento === 'Neutro').length;
+  const ruim = filtered.filter(d => d.posicionamento === 'Ruim').length;
+  const pct = n => total > 0 ? (n/total*100).toFixed(0)+'%' : '0%';
+  const sessions = new Set(filtered.map(d => d.sessao)).size;
+
+  let lines = [];
+
+  // CABEÇALHO
+  lines.push(bold(`${emoji('📋 ')}${title}`));
+  lines.push(italic(`Gerado em ${new Date().toLocaleDateString('pt-BR', {day:'2-digit',month:'long',year:'numeric'})}`));
+  lines.push(divider());
+
+  // FILTROS ATIVOS
+  if (incFiltros) {
+    lines.push(bold(`${emoji('🔎 ')}FILTROS APLICADOS`));
+    const tags = [];
+    if (FILTERS.pos !== 'all') tags.push(`Posicionamento: ${FILTERS.pos}`);
+    if (FILTERS.tema !== 'all') tags.push(`Tema: ${FILTERS.tema}`);
+    if (FILTERS.period !== 'all') tags.push(`Período: ${FILTERS.period}`);
+    if (FILTERS.search) tags.push(`Busca: "${FILTERS.search}"`);
+    if (FILTERS.ver !== null) tags.push(`Vereadores: ${FILTERS.ver.size} selecionados`);
+    if (tags.length === 0) tags.push('Nenhum filtro ativo (todos os dados)');
+    tags.forEach(t => lines.push(bullet(t)));
+    lines.push('');
+  }
+
+  // RESUMO
+  if (incResumo) {
+    lines.push(bold(`${emoji('📊 ')}RESUMO GERAL`));
+    lines.push(bullet(`Total de falas analisadas: ${bold(String(total))}`));
+    lines.push(bullet(`Sessões cobertas: ${bold(String(sessions))}`));
+    lines.push(bullet(`${emoji('✅ ')}Favoráveis: ${bold(String(fav))} (${pct(fav)})`));
+    lines.push(bullet(`${emoji('⚪ ')}Neutras: ${bold(String(neu))} (${pct(neu)})`));
+    lines.push(bullet(`${emoji('🔴 ')}Ruim/Críticas: ${bold(String(ruim))} (${pct(ruim)})`));
+    lines.push('');
+  }
+
+  // TOP TEMAS
+  if (incTemas) {
+    const temaCounts = {};
+    filtered.forEach(d => {
+      const t = d.secretaria && d.secretaria !== 'Não especificado' ? d.secretaria : null;
+      if (!t) return;
+      if (!temaCounts[t]) temaCounts[t] = {fav:0, neu:0, ruim:0};
+      if (d.posicionamento === 'Favorável') temaCounts[t].fav++;
+      else if (d.posicionamento === 'Neutro') temaCounts[t].neu++;
+      else temaCounts[t].ruim++;
+    });
+    const topTemas = Object.entries(temaCounts)
+      .sort((a,b) => (b[1].fav+b[1].neu+b[1].ruim) - (a[1].fav+a[1].neu+a[1].ruim))
+      .slice(0, 6);
+
+    if (topTemas.length > 0) {
+      lines.push(bold(`${emoji('🏷️ ')}TEMAS MAIS DEBATIDOS`));
+      topTemas.forEach(([tema, c]) => {
+        const tot = c.fav + c.neu + c.ruim;
+        const barF = Math.round(c.fav/tot*5);
+        const barR = Math.round(c.ruim/tot*5);
+        const miniBar = isWhats ? ` [${'🟢'.repeat(barF)}${'⚪'.repeat(Math.round(c.neu/tot*5))}${'🔴'.repeat(barR)}]` : '';
+        lines.push(bullet(`${bold(tema)}: ${tot} falas${miniBar}`));
+        lines.push(`  ${emoji('✅')} ${c.fav} favor. · ${emoji('⚪')} ${c.neu} neutr. · ${emoji('🔴')} ${c.ruim} crít.`);
+      });
+      lines.push('');
+    }
+  }
+
+  // TOP VEREADORES
+  if (incVer) {
+    const verCounts = {};
+    filtered.forEach(d => {
+      if (!verCounts[d.vereador]) verCounts[d.vereador] = {fav:0, neu:0, ruim:0};
+      if (d.posicionamento === 'Favorável') verCounts[d.vereador].fav++;
+      else if (d.posicionamento === 'Neutro') verCounts[d.vereador].neu++;
+      else verCounts[d.vereador].ruim++;
+    });
+    const topVer = Object.entries(verCounts)
+      .sort((a,b) => (b[1].fav+b[1].neu+b[1].ruim) - (a[1].fav+a[1].neu+a[1].ruim))
+      .slice(0, 8);
+
+    if (topVer.length > 0) {
+      lines.push(bold(`${emoji('🎤 ')}VEREADORES MAIS ATIVOS`));
+      topVer.forEach(([ver, c], i) => {
+        const tot = c.fav + c.neu + c.ruim;
+        lines.push(bullet(`${bold(i+1 + '. ' + ver)}: ${tot} falas`));
+        lines.push(`  ${emoji('✅')} ${c.fav} · ${emoji('⚪')} ${c.neu} · ${emoji('🔴')} ${c.ruim}`);
+      });
+      lines.push('');
+    }
+  }
+
+  // DESTAQUES
+  if (incDest && nDest > 0) {
+    const favItems = filtered.filter(d => d.posicionamento === 'Favorável').slice(0, nDest);
+    const ruimItems = filtered.filter(d => d.posicionamento === 'Ruim').slice(0, nDest);
+
+    lines.push(bold(`${emoji('💬 ')}DESTAQUES DE DISCURSOS`));
+
+    if (favItems.length > 0) {
+      lines.push(italic(`${emoji('✅ ')}Favoráveis`));
+      favItems.forEach(d => {
+        const snippet = d.discurso.length > 160 ? d.discurso.slice(0, 157) + '…' : d.discurso;
+        lines.push(bullet(`${bold(d.vereador)} (${d.sessao}${d.secretaria !== 'Não especificado' ? ' · ' + d.secretaria : ''})`));
+        lines.push(italic(`"${snippet}"`));
+        lines.push('');
+      });
+    }
+
+    if (ruimItems.length > 0) {
+      lines.push(italic(`${emoji('🔴 ')}Críticas/Ruim`));
+      ruimItems.forEach(d => {
+        const snippet = d.discurso.length > 160 ? d.discurso.slice(0, 157) + '…' : d.discurso;
+        lines.push(bullet(`${bold(d.vereador)} (${d.sessao}${d.secretaria !== 'Não especificado' ? ' · ' + d.secretaria : ''})`));
+        lines.push(italic(`"${snippet}"`));
+        lines.push('');
+      });
+    }
+  }
+
+  // RODAPÉ
+  lines.push(divider());
+  lines.push(italic(`${emoji('🏛️ ')}CMF Analyzer — Câmara de Vereadores de Florianópolis`));
+
+  reportText = lines.join('\n');
+
+  // Exibe
+  document.getElementById('report-preview-text').textContent = reportText;
+  document.getElementById('report-char-count').textContent = `${reportText.length} caracteres · ~${Math.ceil(reportText.length/1600)} mensagem(ns)`;
+  document.getElementById('report-preview-wrap').style.display = 'block';
+  document.getElementById('report-preview-wrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function copyReport() {
+  if (!reportText) return;
+  navigator.clipboard.writeText(reportText).then(() => {
+    const msg = document.createElement('div');
+    msg.className = 'copied-msg';
+    msg.textContent = '✓ Copiado para a área de transferência!';
+    document.body.appendChild(msg);
+    setTimeout(() => msg.remove(), 2200);
+  }).catch(() => {
+    // fallback para browsers sem clipboard API
+    const ta = document.createElement('textarea');
+    ta.value = reportText;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('Copiado!');
+  });
+}
+
+function sendWhatsApp() {
+  if (!reportText) return;
+  const encoded = encodeURIComponent(reportText);
+  window.open(`https://wa.me/?text=${encoded}`, '_blank');
+}
+
+function downloadReport() {
+  if (!reportText) return;
+  const title = document.getElementById('report-title-input').value.trim() || 'relatorio_cmf';
+  const filename = title.toLowerCase().replace(/[^a-z0-9]/g, '_') + '.txt';
+  const blob = new Blob([reportText], { type: 'text/plain;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>
